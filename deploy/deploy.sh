@@ -34,6 +34,6 @@ echo "=== Running database migrations ==="
 docker exec mkhtalif-api npx prisma migrate deploy
 
 echo "=== Done! ==="
-echo "Frontend: https://$DOMAIN"
-echo "API:      https://$DOMAIN/api/v1"
+echo "Frontend: http://$DOMAIN"
+echo "API:      http://$DOMAIN/api/v1"
 echo "MinIO:    http://$DOMAIN:9001"

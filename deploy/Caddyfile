@@ -1,4 +1,4 @@
-{$DOMAIN} {
+:80 {
     # Security headers
     header {
         X-Content-Type-Options "nosniff"
