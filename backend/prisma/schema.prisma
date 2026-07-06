@@ -1,0 +1,1512 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadTemperature {
+  hot
+  warm
+  cold
+}
+
+enum LostReasonCategory {
+  price
+  no_response
+  bad_timing
+  service_not_compatible
+  choose_another_company
+  competitor
+  budget
+  other
+}
+
+enum FollowUpStatus {
+  active
+  pending
+  no_response
+  negotiation
+  objection
+  done
+}
+
+enum LeadStatus {
+  open
+  won
+  lost
+  archived
+}
+
+enum LeadTaskStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+  overdue
+}
+
+enum MeetingType {
+  qualification_call
+  discovery_call
+  discovery_meeting
+  proposal_presentation
+  kickoff
+  review
+}
+
+enum MeetingStatus {
+  scheduled
+  completed
+  cancelled
+  no_show
+}
+
+enum ProposalStatus {
+  draft
+  internal_review
+  sent
+  presented
+  accepted
+  rejected
+  revision
+}
+
+enum ContractStatus {
+  draft
+  sent
+  signed
+  active
+  completed
+  terminated
+}
+
+enum ProjectStatus {
+  onboarding
+  strategy
+  production
+  active
+  on_hold
+  completed
+  cancelled
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  review
+  approved
+  delivered
+  cancelled
+}
+
+enum SprintStatus {
+  planning
+  active
+  review
+  completed
+}
+
+enum DeliverableStatus {
+  draft
+  internal_review
+  client_review
+  approved
+  rejected
+  published
+  archived
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+  changes_requested
+}
+
+enum ApprovalType {
+  internal_qc
+  strategy_alignment
+  client_approval
+}
+
+enum CampaignStatus {
+  planning
+  active
+  paused
+  completed
+  archived
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  overdue
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+}
+
+enum SopStatus {
+  draft
+  published
+  archived
+}
+
+enum ArticleStatus {
+  draft
+  published
+  archived
+}
+
+enum ClientStatus {
+  active
+  at_risk
+  churned
+  archived
+}
+
+model Department {
+  id                String             @id @default(uuid()) @db.Uuid
+  name              String             @db.VarChar(100)
+  code              String             @unique @db.VarChar(50)
+  headUserId        String?            @unique @db.Uuid
+  headUser          User?              @relation("DepartmentHead", fields: [headUserId], references: [id])
+  description       String?            @db.Text
+  createdAt         DateTime           @default(now()) @map("created_at")
+  users             User[]             @relation("UserDepartment")
+  teams             Team[]
+  sops              Sop[]
+  kpis              Kpi[]
+  templates         Template[]
+  knowledgeArticles KnowledgeArticle[]
+  sopCompliance     SopCompliance[]
+  sopTemplates      SopTemplate[]
+
+  @@map("departments")
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @db.VarChar(100)
+  code            String           @unique @db.VarChar(50)
+  description     String?          @db.Text
+  level           Int
+  createdAt       DateTime         @default(now()) @map("created_at")
+  users           User[]
+  permissions     RolePermission[]
+  sops            Sop[]            @relation("SopOwner")
+  accountableSops Sop[]            @relation("SopAccountable")
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  resource    String           @db.VarChar(100)
+  action      String           @db.VarChar(50)
+  description String?          @db.Text
+  roles       RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique @db.VarChar(255)
+  passwordHash String      @map("password_hash") @db.VarChar(255)
+  firstName    String      @map("first_name") @db.VarChar(100)
+  lastName     String      @map("last_name") @db.VarChar(100)
+  phone        String?     @db.VarChar(50)
+  avatarUrl    String?     @map("avatar_url") @db.Text
+  roleId       String?     @map("role_id") @db.Uuid
+  role         Role?       @relation(fields: [roleId], references: [id])
+  departmentId String?     @map("department_id") @db.Uuid
+  department   Department? @relation("UserDepartment", fields: [departmentId], references: [id])
+  headOfDept   Department? @relation("DepartmentHead")
+  isActive       Boolean    @default(true) @map("is_active")
+  moduleAccess   Json?      @map("module_access")
+  lastLogin      DateTime?  @map("last_login") @db.Timestamptz()
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  assignedLeads         Lead[]               @relation("LeadAssignee")
+  accountManagedClients Client[]             @relation("AccountManager")
+  activities            Activity[]
+  meetings              Meeting[]            @relation("MeetingOwner")
+  proposals             Proposal[]           @relation("ProposalOwner")
+  projectAccountManager Project[]            @relation("ProjectAccountManager")
+  projectStrategicLead  Project[]            @relation("ProjectStrategicLead")
+  projectProductionMgr  Project[]            @relation("ProjectProductionManager")
+  assignedTasks         Task[]               @relation("TaskAssignee")
+  deliverables          Deliverable[]        @relation("DeliverableOwner")
+  approvals             Approval[]
+  notifications         Notification[]
+  knowledgeArticles     KnowledgeArticle[]
+  opportunities         Opportunity[]        @relation("OpportunityOwner")
+  teamMembers           TeamMember[]
+  teamsLead             Team[]               @relation("TeamLead")
+  dashboards            Dashboard[]
+  leadScores            LeadScore[]
+  timeEntries           TimeEntry[]
+  auditLogs             AuditLog[]
+  researchReports       ResearchReport[]
+  strategicBlueprints   StrategicBlueprint[]
+  creativeBriefs        CreativeBrief[]
+  blueprintApprovals    StrategicBlueprint[] @relation("BlueprintApprover")
+  briefApprovals        CreativeBrief[]      @relation("BriefApprover")
+  sopVersions           SopVersion[]
+  sopExecutions         SopExecution[]
+  sopExecutionSteps     SopExecutionStep[]
+  sopComplianceChecked  SopCompliance[]      @relation("ComplianceChecker")
+  sopApprovalRequests   SopApproval[]        @relation("ApprovalRequester")
+  sopApprovalDecisions  SopApproval[]        @relation("ApprovalDecider")
+  sopTrainingCreated    SopTraining[]
+  sopTemplates          SopTemplate[]
+  processRecordings     ProcessRecording[]
+  processChecklists     ProcessChecklist[]
+  processImprovements   ProcessImprovement[]
+  SopCompliance         SopCompliance[]
+  leadQualifications    LeadQualification[]  @relation("LeadQualifier")
+  leadAttachments       LeadAttachment[]     @relation("AttachmentUploader")
+  leadTaskAssignments   LeadTask[]           @relation("LeadTaskAssignee")
+  communicationLogs     CommunicationLog[]
+  calendarEvents        CalendarEvent[]
+  dashboardWidgets      DashboardWidget[]
+
+  @@map("users")
+}
+
+model Team {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String       @db.VarChar(100)
+  departmentId String?      @map("department_id") @db.Uuid
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  leadUserId   String?      @map("lead_user_id") @db.Uuid
+  leadUser     User?        @relation("TeamLead", fields: [leadUserId], references: [id])
+  createdAt    DateTime     @default(now()) @map("created_at")
+  members      TeamMember[]
+  projects     Project[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  userId     String   @map("user_id") @db.Uuid
+  teamId     String   @map("team_id") @db.Uuid
+  roleInTeam String?  @map("role_in_team") @db.VarChar(50)
+  joinedAt   DateTime @default(now()) @map("joined_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([userId, teamId])
+  @@map("team_members")
+}
+
+model PipelineStage {
+  id                 String   @id @default(uuid()) @db.Uuid
+  name               String   @db.VarChar(100)
+  code               String   @unique @db.VarChar(50)
+  stageOrder         Int      @map("stage_order")
+  probabilityDefault Int      @default(0) @map("probability_default")
+  color              String?  @db.VarChar(7)
+  createdAt          DateTime @default(now()) @map("created_at")
+  leads              Lead[]
+
+  @@map("pipeline_stages")
+}
+
+model Lead {
+  id                 String             @id @default(uuid()) @db.Uuid
+  clientName         String             @map("client_name") @db.VarChar(255)
+  company            String?            @db.VarChar(255)
+  email              String?            @db.VarChar(255)
+  phone              String?            @db.VarChar(50)
+  website            String?            @db.Text
+  budgetMin          Decimal?           @map("budget_min") @db.Decimal(12, 2)
+  budgetMax          Decimal?           @map("budget_max") @db.Decimal(12, 2)
+  source             String             @db.VarChar(50)
+  city               String?            @db.VarChar(100)
+  industry           String?            @db.VarChar(100)
+  tags               String[]           @db.Text
+  priority           String?            @default("medium") @db.VarChar(10)
+  serviceType        String?            @map("service_type") @db.VarChar(50)
+  clarityLevel       String?            @map("clarity_level") @db.VarChar(20)
+  budgetLevel        String?            @map("budget_level") @db.VarChar(20)
+  opportunitySize    String?            @map("opportunity_size") @db.VarChar(20)
+  leadScore          Int?               @map("lead_score")
+  leadTemperature    LeadTemperature?   @map("lead_temperature")
+  stageId            String?            @map("stage_id") @db.Uuid
+  stage              PipelineStage?     @relation(fields: [stageId], references: [id])
+  assignedTo         String?            @map("assigned_to") @db.Uuid
+  assignee           User?              @relation("LeadAssignee", fields: [assignedTo], references: [id])
+  nextAction         String?            @map("next_action") @db.Text
+  nextActionDate     DateTime?          @map("next_action_date") @db.Timestamptz()
+  followUpDate       DateTime?          @map("follow_up_date") @db.Timestamptz()
+  followUpStatus     FollowUpStatus?    @map("follow_up_status")
+  proposalSent       Boolean            @default(false) @map("proposal_sent")
+  dealValue          Decimal?           @map("deal_value") @db.Decimal(12, 2)
+  probability        Int?
+  status             LeadStatus         @default(open)
+  lostReason         String?            @map("lost_reason") @db.Text
+  lostReasonCategory LostReasonCategory? @map("lost_reason_category")
+  lastContactedAt    DateTime?          @map("last_contacted_at") @db.Timestamptz()
+  sopId              String?            @map("sop_id") @db.Uuid
+  sop                Sop?               @relation(fields: [sopId], references: [id])
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  client            Client?            @relation("LeadToClient")
+  activities        Activity[]
+  meetings          Meeting[]
+  leadScores        LeadScore[]
+  sopExecutions     SopExecution[]
+  communicationLogs CommunicationLog[]
+  calendarEvents    CalendarEvent[]
+  qualification     LeadQualification?
+  attachments       LeadAttachment[]
+  leadTasks         LeadTask[]
+  followUps         LeadFollowUp[]
+
+  @@index([assignedTo])
+  @@index([stageId])
+  @@index([leadScore])
+  @@index([status])
+  @@index([source])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+model LeadFollowUp {
+  id         String          @id @default(uuid()) @db.Uuid
+  leadId     String          @map("lead_id") @db.Uuid
+  lead       Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  title      String          @db.VarChar(255)
+  dueDate    DateTime        @map("due_date") @db.Timestamptz()
+  status     FollowUpStatus  @default(active)
+  chainOrder Int?            @map("chain_order")
+  chainId    String?         @map("chain_id") @db.VarChar(100)
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+
+  @@index([leadId])
+  @@index([dueDate])
+  @@index([chainId])
+  @@map("lead_follow_ups")
+}
+
+model LeadQualification {
+  id               String   @id @default(uuid()) @db.Uuid
+  leadId           String   @unique @map("lead_id") @db.Uuid
+  lead             Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  serviceRequested String?  @map("service_requested") @db.Text
+  businessGoal     String?  @map("business_goal") @db.Text
+  budget           String?  @db.VarChar(50)
+  urgency          String?  @db.VarChar(50)
+  previousAgency   String?  @map("previous_agency") @db.Text
+  expectedTimeline String?  @map("expected_timeline") @db.Text
+  decisionMaker    String?  @map("decision_maker") @db.Text
+  additionalNotes  String?  @map("additional_notes") @db.Text
+  qualifiedById    String?  @map("qualified_by_id") @db.Uuid
+  qualifiedBy      User?    @relation("LeadQualifier", fields: [qualifiedById], references: [id])
+  qualifiedAt      DateTime @default(now()) @map("qualified_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("lead_qualifications")
+}
+
+model LeadAttachment {
+  id           String   @id @default(uuid()) @db.Uuid
+  leadId       String   @map("lead_id") @db.Uuid
+  lead         Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fileName     String   @map("file_name") @db.VarChar(255)
+  fileUrl      String   @map("file_url") @db.Text
+  fileType     String?  @map("file_type") @db.VarChar(50)
+  fileSize     Int?     @map("file_size")
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  uploadedBy   User?    @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@map("lead_attachments")
+}
+
+model LeadTask {
+  id          String         @id @default(uuid()) @db.Uuid
+  leadId      String         @map("lead_id") @db.Uuid
+  lead        Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  title       String         @db.VarChar(255)
+  description String?        @db.Text
+  taskType    String?        @map("task_type") @db.VarChar(50)
+  status      LeadTaskStatus @default(pending)
+  priority    String         @default("medium") @db.VarChar(10)
+  assignedTo  String?        @map("assigned_to") @db.Uuid
+  assignee    User?          @relation("LeadTaskAssignee", fields: [assignedTo], references: [id])
+  dueDate     DateTime?      @map("due_date") @db.Timestamptz()
+  completedAt DateTime?      @map("completed_at") @db.Timestamptz()
+  reminderAt  DateTime?      @map("reminder_at") @db.Timestamptz()
+  chainOrder  Int?           @map("chain_order")
+  chainTotal  Int?           @map("chain_total")
+  chainId     String?        @map("chain_id") @db.VarChar(100)
+  chainBlueprint Json?       @map("chain_blueprint") @db.JsonB
+  checklist    Json?          @db.JsonB
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  @@index([leadId])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([dueDate])
+  @@index([chainId])
+  @@map("lead_tasks")
+}
+
+model LeadScore {
+  id               String   @id @default(uuid()) @db.Uuid
+  leadId           String   @map("lead_id") @db.Uuid
+  lead             Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  serviceTypeScore Int      @map("service_type_score")
+  clarityScore     Int      @map("clarity_score")
+  budgetScore      Int      @map("budget_score")
+  opportunityScore Int      @map("opportunity_score")
+  totalScore       Int      @map("total_score")
+  scoredBy         String?  @map("scored_by") @db.Uuid
+  scorer           User?    @relation(fields: [scoredBy], references: [id])
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("lead_scores")
+}
+
+model Activity {
+  id          String   @id @default(uuid()) @db.Uuid
+  leadId      String   @map("lead_id") @db.Uuid
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId      String?  @map("user_id") @db.Uuid
+  user        User?    @relation(fields: [userId], references: [id])
+  actionType  String   @map("action_type") @db.VarChar(50)
+  description String?  @db.Text
+  outcome     String?  @db.Text
+  nextStep    String?  @map("next_step") @db.Text
+  metadata    Json?    @db.JsonB
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("activities")
+}
+
+model Client {
+  id                String       @id @default(uuid()) @db.Uuid
+  leadId            String?      @unique @map("lead_id") @db.Uuid
+  lead              Lead?        @relation("LeadToClient", fields: [leadId], references: [id])
+  name              String       @db.VarChar(255)
+  company           String?      @db.VarChar(255)
+  email             String?      @db.VarChar(255)
+  phone             String?      @db.VarChar(50)
+  website           String?      @db.Text
+  industry          String?      @db.VarChar(100)
+  accountManagerId  String?      @map("account_manager_id") @db.Uuid
+  accountManager    User?        @relation("AccountManager", fields: [accountManagerId], references: [id])
+  status            ClientStatus @default(active)
+  satisfactionScore Int?
+  lifetimeValue     Decimal?     @map("lifetime_value") @db.Decimal(14, 2)
+  acquiredAt        DateTime?    @map("acquired_at") @db.Timestamptz()
+  churnedAt         DateTime?    @map("churned_at") @db.Timestamptz()
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  opportunities     Opportunity[]
+  proposals         Proposal[]
+  contracts         Contract[]
+  projects          Project[]
+  invoices          Invoice[]
+  communicationLogs CommunicationLog[]
+  calendarEvents    CalendarEvent[]
+  portalAccess      ClientPortalAccess[]
+
+  @@map("clients")
+}
+
+model Opportunity {
+  id                String     @id @default(uuid()) @db.Uuid
+  clientId          String     @map("client_id") @db.Uuid
+  client            Client     @relation(fields: [clientId], references: [id])
+  name              String     @db.VarChar(255)
+  description       String?    @db.Text
+  value             Decimal?   @db.Decimal(12, 2)
+  stage             String     @default("discovery") @db.VarChar(50)
+  probability       Int?
+  expectedCloseDate DateTime?  @map("expected_close_date") @db.Timestamptz()
+  ownerId           String?    @map("owner_id") @db.Uuid
+  owner             User?      @relation("OpportunityOwner", fields: [ownerId], references: [id])
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  proposals         Proposal[]
+
+  @@map("opportunities")
+}
+
+model Meeting {
+  id              String        @id @default(uuid()) @db.Uuid
+  leadId          String?       @map("lead_id") @db.Uuid
+  lead            Lead?         @relation(fields: [leadId], references: [id])
+  type            MeetingType?
+  scheduledAt     DateTime      @map("scheduled_at") @db.Timestamptz()
+  durationMinutes Int?          @map("duration_minutes")
+  status          MeetingStatus @default(scheduled)
+  notes           String?       @db.Text
+  recordingUrl    String?       @map("recording_url") @db.Text
+  outcome         String?       @db.Text
+  nextStep        String?       @map("next_step") @db.Text
+  ownerId         String?       @map("owner_id") @db.Uuid
+  owner           User?         @relation("MeetingOwner", fields: [ownerId], references: [id])
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@map("meetings")
+}
+
+model Proposal {
+  id               String         @id @default(uuid()) @db.Uuid
+  opportunityId    String?        @map("opportunity_id") @db.Uuid
+  opportunity      Opportunity?   @relation(fields: [opportunityId], references: [id])
+  clientId         String?        @map("client_id") @db.Uuid
+  client           Client?        @relation(fields: [clientId], references: [id])
+  title            String         @db.VarChar(255)
+  version          String         @default("v1.0") @db.VarChar(10)
+  status           ProposalStatus @default(draft)
+  technicalContent String?        @map("technical_content") @db.Text
+  financialContent String?        @map("financial_content") @db.Text
+  scopeOfWork      Json?          @map("scope_of_work") @db.JsonB
+  expectations     String?        @db.Text
+  totalValue       Decimal?       @map("total_value") @db.Decimal(12, 2)
+  currency         String         @default("LYD") @db.VarChar(3)
+  validityDays     Int            @default(7) @map("validity_days")
+  sentAt           DateTime?      @map("sent_at") @db.Timestamptz()
+  acceptedAt       DateTime?      @map("accepted_at") @db.Timestamptz()
+  rejectedAt       DateTime?      @map("rejected_at") @db.Timestamptz()
+  rejectionReason  String?        @map("rejection_reason") @db.Text
+  ownerId          String?        @map("owner_id") @db.Uuid
+  owner            User?          @relation("ProposalOwner", fields: [ownerId], references: [id])
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  contract         Contract?
+
+  @@map("proposals")
+}
+
+model Contract {
+  id               String         @id @default(uuid()) @db.Uuid
+  proposalId       String?        @unique @map("proposal_id") @db.Uuid
+  proposal         Proposal?      @relation(fields: [proposalId], references: [id])
+  clientId         String?        @map("client_id") @db.Uuid
+  client           Client?        @relation(fields: [clientId], references: [id])
+  contractNumber   String         @unique @map("contract_number") @db.VarChar(50)
+  status           ContractStatus @default(draft)
+  scopeOfWork      Json?          @map("scope_of_work") @db.JsonB
+  startDate        DateTime?      @map("start_date") @db.Date
+  endDate          DateTime?      @map("end_date") @db.Date
+  totalValue       Decimal?       @map("total_value") @db.Decimal(12, 2)
+  paymentTerms     String?        @map("payment_terms") @db.Text
+  specialTerms     String?        @map("special_terms") @db.Text
+  signedAt         DateTime?      @map("signed_at") @db.Timestamptz()
+  signedByClientAt DateTime?      @map("signed_by_client_at") @db.Timestamptz()
+  fileUrl          String?        @map("file_url") @db.Text
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  projects         Project[]
+  invoices         Invoice[]
+
+  @@map("contracts")
+}
+
+model Project {
+  id                  String        @id @default(uuid()) @db.Uuid
+  clientId            String        @map("client_id") @db.Uuid
+  client              Client        @relation(fields: [clientId], references: [id])
+  contractId          String?       @map("contract_id") @db.Uuid
+  contract            Contract?     @relation(fields: [contractId], references: [id])
+  name                String        @db.VarChar(255)
+  description         String?       @db.Text
+  status              ProjectStatus @default(onboarding)
+  priority            String        @default("medium") @db.VarChar(10)
+  startDate           DateTime?     @map("start_date") @db.Date
+  targetEndDate       DateTime?     @map("target_end_date") @db.Date
+  actualEndDate       DateTime?     @map("actual_end_date") @db.Date
+  accountManagerId    String?       @map("account_manager_id") @db.Uuid
+  accountManager      User?         @relation("ProjectAccountManager", fields: [accountManagerId], references: [id])
+  strategicLeadId     String?       @map("strategic_lead_id") @db.Uuid
+  strategicLead       User?         @relation("ProjectStrategicLead", fields: [strategicLeadId], references: [id])
+  productionManagerId String?       @map("production_manager_id") @db.Uuid
+  productionManager   User?         @relation("ProjectProductionManager", fields: [productionManagerId], references: [id])
+  budget              Decimal?      @db.Decimal(12, 2)
+  hourlyRate          Decimal?      @map("hourly_rate") @db.Decimal(8, 2)
+  estimatedHours      Int?          @map("estimated_hours")
+  sopId               String?       @map("sop_id") @db.Uuid
+  sop                 Sop?          @relation(fields: [sopId], references: [id])
+  teamId              String?       @map("team_id") @db.Uuid
+  team                Team?         @relation(fields: [teamId], references: [id])
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  tasks               Task[]
+  sprints             Sprint[]
+  deliverables        Deliverable[]
+  campaigns           Campaign[]
+  researchReports     ResearchReport[]
+  strategicBlueprints StrategicBlueprint[]
+  creativeBriefs      CreativeBrief[]
+  sopExecutions       SopExecution[]
+  calendarEvents      CalendarEvent[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([accountManagerId])
+  @@map("projects")
+}
+
+model Task {
+  id                 String            @id @default(uuid()) @db.Uuid
+  projectId          String            @map("project_id") @db.Uuid
+  project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentTaskId       String?           @map("parent_task_id") @db.Uuid
+  parentTask         Task?             @relation("TaskDependencies", fields: [parentTaskId], references: [id])
+  childTasks         Task[]            @relation("TaskDependencies")
+  deliverables       Deliverable[]
+  timeEntries        TimeEntry[]
+  title              String            @db.VarChar(255)
+  description        String?           @db.Text
+  taskType           String?           @map("task_type") @db.VarChar(50)
+  status             TaskStatus        @default(todo)
+  priority           String            @default("medium") @db.VarChar(10)
+  sopId              String?           @map("sop_id") @db.Uuid
+  sop                Sop?              @relation(fields: [sopId], references: [id])
+  sopExecutionStepId String?           @map("sop_execution_step_id") @db.Uuid
+  sopExecutionStep   SopExecutionStep? @relation(fields: [sopExecutionStepId], references: [id])
+  assignedTo         String?           @map("assigned_to") @db.Uuid
+  assignee           User?             @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  estimatedHours     Decimal?          @map("estimated_hours") @db.Decimal(6, 2)
+  deadline           DateTime?         @db.Timestamptz()
+  completedAt        DateTime?         @map("completed_at") @db.Timestamptz()
+  sprintId           String?           @map("sprint_id") @db.Uuid
+  sprint             Sprint?           @relation(fields: [sprintId], references: [id])
+  sortOrder          Int?              @map("sort_order")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  SopExecution       SopExecution[]
+
+  @@index([projectId])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([sprintId])
+  @@map("tasks")
+}
+
+model Sprint {
+  id        String       @id @default(uuid()) @db.Uuid
+  projectId String       @map("project_id") @db.Uuid
+  project   Project      @relation(fields: [projectId], references: [id])
+  name      String       @db.VarChar(100)
+  startDate DateTime?    @map("start_date") @db.Date
+  endDate   DateTime?    @map("end_date") @db.Date
+  status    SprintStatus @default(planning)
+  goals     String?      @db.Text
+  createdAt DateTime     @default(now()) @map("created_at")
+  tasks     Task[]
+
+  @@map("sprints")
+}
+
+model Deliverable {
+  id                   String            @id @default(uuid()) @db.Uuid
+  projectId            String            @map("project_id") @db.Uuid
+  project              Project           @relation(fields: [projectId], references: [id])
+  taskId               String?           @map("task_id") @db.Uuid
+  task                 Task?             @relation(fields: [taskId], references: [id])
+  name                 String            @db.VarChar(255)
+  type                 String?           @db.VarChar(50)
+  status               DeliverableStatus @default(draft)
+  fileUrl              String?           @map("file_url") @db.Text
+  version              Int               @default(1)
+  revisionCount        Int               @default(0) @map("revision_count")
+  maxRevisions         Int               @default(3) @map("max_revisions")
+  submittedForReviewAt DateTime?         @map("submitted_for_review_at") @db.Timestamptz()
+  approvedAt           DateTime?         @map("approved_at") @db.Timestamptz()
+  ownerId              String?           @map("owner_id") @db.Uuid
+  owner                User?             @relation("DeliverableOwner", fields: [ownerId], references: [id])
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  approvals            Approval[]
+
+  @@map("deliverables")
+}
+
+model Approval {
+  id            String         @id @default(uuid()) @db.Uuid
+  deliverableId String         @map("deliverable_id") @db.Uuid
+  deliverable   Deliverable    @relation(fields: [deliverableId], references: [id])
+  approverId    String?        @map("approver_id") @db.Uuid
+  approver      User?          @relation(fields: [approverId], references: [id])
+  type          ApprovalType?
+  status        ApprovalStatus @default(pending)
+  comments      String?        @db.Text
+  decisionAt    DateTime?      @map("decision_at") @db.Timestamptz()
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  @@map("approvals")
+}
+
+model Campaign {
+  id             String           @id @default(uuid()) @db.Uuid
+  projectId      String           @map("project_id") @db.Uuid
+  project        Project          @relation(fields: [projectId], references: [id])
+  name           String           @db.VarChar(255)
+  objective      String?          @db.VarChar(100)
+  status         CampaignStatus   @default(planning)
+  budget         Decimal?         @db.Decimal(12, 2)
+  startDate      DateTime?        @map("start_date") @db.Date
+  endDate        DateTime?        @map("end_date") @db.Date
+  channels       Json?            @db.JsonB
+  targetAudience Json?            @map("target_audience") @db.JsonB
+  kpiTargets     Json?            @map("kpi_targets") @db.JsonB
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  metrics        CampaignMetric[]
+
+  @@map("campaigns")
+}
+
+model CampaignMetric {
+  id                String   @id @default(uuid()) @db.Uuid
+  campaignId        String   @map("campaign_id") @db.Uuid
+  campaign          Campaign @relation(fields: [campaignId], references: [id])
+  date              DateTime @db.Date
+  impressions       Int      @default(0)
+  reach             Int      @default(0)
+  clicks            Int      @default(0)
+  ctr               Decimal? @db.Decimal(5, 2)
+  cpm               Decimal? @db.Decimal(8, 2)
+  spend             Decimal? @db.Decimal(10, 2)
+  leads             Int      @default(0)
+  conversions       Int      @default(0)
+  conversionRate    Decimal? @map("conversion_rate") @db.Decimal(5, 2)
+  costPerConversion Decimal? @map("cost_per_conversion") @db.Decimal(8, 2)
+  revenue           Decimal? @db.Decimal(12, 2)
+  roas              Decimal? @db.Decimal(6, 2)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([campaignId, date])
+  @@map("campaign_metrics")
+}
+
+model Sop {
+  id                 String               @id @default(uuid()) @db.Uuid
+  code               String               @unique @db.VarChar(50)
+  name               String               @db.VarChar(255)
+  category           String?              @db.VarChar(100)
+  departmentId       String?              @map("department_id") @db.Uuid
+  department         Department?          @relation(fields: [departmentId], references: [id])
+  ownerRoleId        String?              @map("owner_role_id") @db.Uuid
+  ownerRole          Role?                @relation("SopOwner", fields: [ownerRoleId], references: [id])
+  accountableRoleId  String?              @map("accountable_role_id") @db.Uuid
+  accountableRole    Role?                @relation("SopAccountable", fields: [accountableRoleId], references: [id])
+  purpose            String               @db.Text
+  businessContext    Json?                @map("business_context") @db.JsonB
+  trigger            String?              @db.Text
+  triggerDescription String?              @map("trigger_description") @db.Text
+  input              String?              @db.Text
+  output             String?              @db.Text
+  steps              Json?                @db.JsonB
+  decisionMatrix     Json?                @map("decision_matrix") @db.JsonB
+  escalationRules    Json?                @map("escalation_rules") @db.JsonB
+  timeStandards      Json?                @map("time_standards") @db.JsonB
+  qualityStandards   String?              @map("quality_standards") @db.Text
+  commonMistakes     String?              @map("common_mistakes") @db.Text
+  successDefinition  String?              @map("success_definition") @db.Text
+  kpis               Json?                @db.JsonB
+  risks              Json?                @db.JsonB
+  trainingMaterials  Json?                @map("training_materials") @db.JsonB
+  automationRules    Json?                @map("automation_rules") @db.JsonB
+  version            String               @default("v1.0") @db.VarChar(10)
+  status             SopStatus            @default(draft)
+  videoUrl           String?              @map("video_url") @db.Text
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  checklists         SopChecklist[]
+  knowledgeArticles  KnowledgeArticle[]
+  versions           SopVersion[]
+  executions         SopExecution[]
+  compliance         SopCompliance[]
+  approvals          SopApproval[]
+  training           SopTraining[]
+  recordings         ProcessRecording[]
+  processChecklists  ProcessChecklist[]
+  improvements       ProcessImprovement[]
+  Lead               Lead[]
+  Project            Project[]
+  Task               Task[]
+
+  @@map("sops")
+}
+
+model SopChecklist {
+  id        String   @id @default(uuid()) @db.Uuid
+  sopId     String   @map("sop_id") @db.Uuid
+  sop       Sop      @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  section   String?  @db.VarChar(50)
+  item      String   @db.Text
+  sortOrder Int?     @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("sop_checklists")
+}
+
+model KnowledgeArticle {
+  id           String        @id @default(uuid()) @db.Uuid
+  title        String        @db.VarChar(255)
+  content      String?       @db.Text
+  articleType  String?       @map("article_type") @db.VarChar(50)
+  departmentId String?       @map("department_id") @db.Uuid
+  department   Department?   @relation(fields: [departmentId], references: [id])
+  sopId        String?       @map("sop_id") @db.Uuid
+  sop          Sop?          @relation(fields: [sopId], references: [id])
+  tags         String[]      @db.Text
+  status       ArticleStatus @default(draft)
+  authorId     String?       @map("author_id") @db.Uuid
+  author       User?         @relation(fields: [authorId], references: [id])
+  publishedAt  DateTime?     @map("published_at") @db.Timestamptz()
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@index([tags], type: Gin)
+  @@index([articleType])
+  @@map("knowledge_articles")
+}
+
+model Template {
+  id           String      @id @default(uuid()) @db.Uuid
+  name         String      @db.VarChar(255)
+  type         String?     @db.VarChar(50)
+  content      String?     @db.Text
+  fileUrl      String?     @map("file_url") @db.Text
+  category     String?     @db.VarChar(100)
+  departmentId String?     @map("department_id") @db.Uuid
+  department   Department? @relation(fields: [departmentId], references: [id])
+  version      String      @default("v1.0") @db.VarChar(10)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  @@map("templates")
+}
+
+model Kpi {
+  id               String      @id @default(uuid()) @db.Uuid
+  name             String      @db.VarChar(255)
+  code             String      @unique @db.VarChar(50)
+  description      String?     @db.Text
+  category         String?     @db.VarChar(50)
+  formula          String?     @db.Text
+  unit             String?     @db.VarChar(50)
+  targetValue      Decimal?    @map("target_value") @db.Decimal(12, 2)
+  targetComparison String?     @map("target_comparison") @db.VarChar(10)
+  dataSource       String?     @map("data_source") @db.VarChar(100)
+  updateFrequency  String?     @map("update_frequency") @db.VarChar(20)
+  departmentId     String?     @map("department_id") @db.Uuid
+  department       Department? @relation(fields: [departmentId], references: [id])
+  dashboardId      String?     @map("dashboard_id") @db.Uuid
+  dashboard        Dashboard?  @relation(fields: [dashboardId], references: [id])
+  isActive         Boolean     @default(true) @map("is_active")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  values           KpiValue[]
+
+  @@map("kpis")
+}
+
+model KpiValue {
+  id          String   @id @default(uuid()) @db.Uuid
+  kpiId       String   @map("kpi_id") @db.Uuid
+  kpi         Kpi      @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  value       Decimal  @db.Decimal(14, 2)
+  periodStart DateTime @map("period_start") @db.Date
+  periodEnd   DateTime @map("period_end") @db.Date
+  recordedAt  DateTime @default(now()) @map("recorded_at")
+
+  @@index([kpiId])
+  @@index([periodStart, periodEnd])
+  @@map("kpi_values")
+}
+
+model Dashboard {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(255)
+  type      String?  @db.VarChar(50)
+  ownerId   String?  @map("owner_id") @db.Uuid
+  owner     User?    @relation(fields: [ownerId], references: [id])
+  config    Json?    @db.JsonB
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  kpis      Kpi[]
+
+  @@map("dashboards")
+}
+
+model Invoice {
+  id            String        @id @default(uuid()) @db.Uuid
+  invoiceNumber String        @unique @map("invoice_number") @db.VarChar(50)
+  contractId    String?       @map("contract_id") @db.Uuid
+  contract      Contract?     @relation(fields: [contractId], references: [id])
+  clientId      String?       @map("client_id") @db.Uuid
+  client        Client?       @relation(fields: [clientId], references: [id])
+  status        InvoiceStatus @default(draft)
+  totalAmount   Decimal       @map("total_amount") @db.Decimal(12, 2)
+  taxAmount     Decimal       @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  currency      String        @default("LYD") @db.VarChar(3)
+  dueDate       DateTime?     @map("due_date") @db.Date
+  paidAt        DateTime?     @map("paid_at") @db.Timestamptz()
+  paymentMethod String?       @map("payment_method") @db.VarChar(50)
+  notes         String?       @db.Text
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  payments      Payment[]
+
+  @@index([clientId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model Payment {
+  id            String        @id @default(uuid()) @db.Uuid
+  invoiceId     String        @map("invoice_id") @db.Uuid
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id])
+  amount        Decimal       @db.Decimal(12, 2)
+  paymentDate   DateTime      @default(now()) @map("payment_date") @db.Timestamptz()
+  paymentMethod String?       @map("payment_method") @db.VarChar(50)
+  reference     String?       @db.Text
+  status        PaymentStatus @default(completed)
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  @@map("payments")
+}
+
+model Notification {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String   @db.VarChar(255)
+  body          String?  @db.Text
+  type          String?  @db.VarChar(50)
+  referenceType String?  @map("reference_type") @db.VarChar(50)
+  referenceId   String?  @map("reference_id") @db.Uuid
+  isRead        Boolean  @default(false) @map("is_read")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model AutomationRule {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String    @db.VarChar(255)
+  description   String?   @db.Text
+  triggerType   String    @map("trigger_type") @db.VarChar(50)
+  triggerConfig Json?     @map("trigger_config") @db.JsonB
+  conditions    Json?     @db.JsonB
+  actions       Json?     @db.JsonB
+  isActive      Boolean   @default(true) @map("is_active")
+  errorHandling Json?     @map("error_handling") @db.JsonB
+  lastRunAt     DateTime? @map("last_run_at") @db.Timestamptz()
+  runCount      Int       @default(0) @map("run_count")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("automation_rules")
+}
+
+model TimeEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  taskId      String   @map("task_id") @db.Uuid
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id])
+  description String?  @db.Text
+  duration    Int      @map("duration") // minutes
+  date        DateTime @map("date") @db.Date
+  billable    Boolean  @default(true) @map("billable")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([date])
+  @@map("time_entries")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String   @db.VarChar(50)
+  entity    String   @db.VarChar(50)
+  entityId  String?  @map("entity_id") @db.Uuid
+  oldValue  Json?    @map("old_value") @db.JsonB
+  newValue  Json?    @map("new_value") @db.JsonB
+  metadata  Json?    @db.JsonB
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model ResearchReport {
+  id                 String               @id @default(uuid()) @db.Uuid
+  projectId          String               @map("project_id") @db.Uuid
+  project            Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title              String               @db.VarChar(255)
+  businessAnalysis   String?              @map("business_analysis") @db.Text
+  socialAnalysis     String?              @map("social_analysis") @db.Text
+  marketAnalysis     String?              @map("market_analysis") @db.Text
+  competitorAnalysis String?              @map("competitor_analysis") @db.Text
+  audienceAnalysis   String?              @map("audience_analysis") @db.Text
+  swot               Json?                @db.JsonB
+  keyFindings        String?              @map("key_findings") @db.Text
+  status             String               @default("draft") @db.VarChar(20)
+  createdById        String?              @map("created_by_id") @db.Uuid
+  createdBy          User?                @relation(fields: [createdById], references: [id])
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  blueprints         StrategicBlueprint[]
+
+  @@map("research_reports")
+}
+
+model StrategicBlueprint {
+  id                       String          @id @default(uuid()) @db.Uuid
+  projectId                String          @map("project_id") @db.Uuid
+  project                  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reportId                 String?         @map("report_id") @db.Uuid
+  report                   ResearchReport? @relation(fields: [reportId], references: [id])
+  title                    String          @db.VarChar(255)
+  executiveSummary         String?         @map("executive_summary") @db.Text
+  situationAnalysis        String?         @map("situation_analysis") @db.Text
+  objectives               String?         @db.Text
+  targetAudience           String?         @map("target_audience") @db.Text
+  positioning              String?         @db.Text
+  messaging                String?         @db.Text
+  channelStrategy          String?         @map("channel_strategy") @db.Text
+  creativeDirection        String?         @map("creative_direction") @db.Text
+  budget                   String?         @db.Text
+  timeline                 String?         @db.Text
+  kpiFramework             String?         @map("kpi_framework") @db.Text
+  strategicRecommendations String?         @map("strategic_recommendations") @db.Text
+  status                   String          @default("draft") @db.VarChar(20)
+  createdById              String?         @map("created_by_id") @db.Uuid
+  createdBy                User?           @relation(fields: [createdById], references: [id])
+  approvedById             String?         @map("approved_by_id") @db.Uuid
+  approvedBy               User?           @relation("BlueprintApprover", fields: [approvedById], references: [id])
+  createdAt                DateTime        @default(now()) @map("created_at")
+  updatedAt                DateTime        @updatedAt @map("updated_at")
+  creativeBriefs           CreativeBrief[]
+
+  @@map("strategic_blueprints")
+}
+
+model CreativeBrief {
+  id               String              @id @default(uuid()) @db.Uuid
+  projectId        String              @map("project_id") @db.Uuid
+  project          Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  blueprintId      String?             @map("blueprint_id") @db.Uuid
+  blueprint        StrategicBlueprint? @relation(fields: [blueprintId], references: [id])
+  title            String              @db.VarChar(255)
+  overview         String?             @db.Text
+  objectives       String?             @db.Text
+  targetAudience   String?             @map("target_audience") @db.Text
+  keyMessage       String?             @map("key_message") @db.Text
+  tone             String?             @db.VarChar(100)
+  deliverables     Json?               @db.JsonB
+  visualReferences String?             @map("visual_references") @db.Text
+  brandGuidelines  String?             @map("brand_guidelines") @db.Text
+  distribution     String?             @db.Text
+  successMetrics   String?             @map("success_metrics") @db.Text
+  timeline         String?             @db.Text
+  status           String              @default("draft") @db.VarChar(20)
+  createdById      String?             @map("created_by_id") @db.Uuid
+  createdBy        User?               @relation(fields: [createdById], references: [id])
+  approvedById     String?             @map("approved_by_id") @db.Uuid
+  approvedBy       User?               @relation("BriefApprover", fields: [approvedById], references: [id])
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  @@index([projectId])
+  @@map("creative_briefs")
+}
+
+enum SopExecutionStatus {
+  pending
+  in_progress
+  completed
+  failed
+  skipped
+}
+
+enum SopApprovalDecision {
+  pending
+  approved
+  rejected
+  changes_requested
+}
+
+enum ProcessRecordingStatus {
+  recording
+  processing
+  completed
+  failed
+}
+
+model SopVersion {
+  id            String        @id @default(uuid()) @db.Uuid
+  sopId         String        @map("sop_id") @db.Uuid
+  sop           Sop           @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  version       String        @db.VarChar(20)
+  changeNotes   String?       @map("change_notes") @db.Text
+  stepsSnapshot Json?         @map("steps_snapshot") @db.JsonB
+  status        String        @default("draft") @db.VarChar(20)
+  createdById   String?       @map("created_by_id") @db.Uuid
+  createdBy     User?         @relation(fields: [createdById], references: [id])
+  createdAt     DateTime      @default(now()) @map("created_at")
+  SopApproval   SopApproval[]
+
+  @@unique([sopId, version])
+  @@map("sop_versions")
+}
+
+model SopExecution {
+  id                String             @id @default(uuid()) @db.Uuid
+  sopId             String             @map("sop_id") @db.Uuid
+  sop               Sop                @relation(fields: [sopId], references: [id])
+  projectId         String?            @map("project_id") @db.Uuid
+  project           Project?           @relation(fields: [projectId], references: [id])
+  leadId            String?            @map("lead_id") @db.Uuid
+  lead              Lead?              @relation(fields: [leadId], references: [id])
+  taskId            String?            @map("task_id") @db.Uuid
+  task              Task?              @relation(fields: [taskId], references: [id])
+  name              String             @db.VarChar(255)
+  status            SopExecutionStatus @default(pending)
+  startedAt         DateTime?          @map("started_at") @db.Timestamptz()
+  completedAt       DateTime?          @map("completed_at") @db.Timestamptz()
+  context           Json?              @db.JsonB
+  createdById       String?            @map("created_by_id") @db.Uuid
+  createdBy         User?              @relation(fields: [createdById], references: [id])
+  createdAt         DateTime           @default(now()) @map("created_at")
+  steps             SopExecutionStep[]
+  compliance        SopCompliance[]
+  processChecklists ProcessChecklist[]
+
+  @@index([sopId])
+  @@index([status])
+  @@map("sop_executions")
+}
+
+model SopExecutionStep {
+  id           String             @id @default(uuid()) @db.Uuid
+  executionId  String             @map("execution_id") @db.Uuid
+  execution    SopExecution       @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  stepKey      String             @map("step_key") @db.VarChar(100)
+  stepName     String             @map("step_name") @db.VarChar(255)
+  description  String?            @db.Text
+  status       SopExecutionStatus @default(pending)
+  assignedToId String?            @map("assigned_to_id") @db.Uuid
+  assignedTo   User?              @relation(fields: [assignedToId], references: [id])
+  startedAt    DateTime?          @map("started_at") @db.Timestamptz()
+  completedAt  DateTime?          @map("completed_at") @db.Timestamptz()
+  duration     Int?               @map("duration")
+  notes        String?            @db.Text
+  output       Json?              @db.JsonB
+  sortOrder    Int                @default(0) @map("sort_order")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  Task         Task[]
+
+  @@index([executionId])
+  @@map("sop_execution_steps")
+}
+
+model SopCompliance {
+  id           String        @id @default(uuid()) @db.Uuid
+  sopId        String        @map("sop_id") @db.Uuid
+  sop          Sop           @relation(fields: [sopId], references: [id])
+  executionId  String?       @map("execution_id") @db.Uuid
+  execution    SopExecution? @relation(fields: [executionId], references: [id])
+  departmentId String?       @map("department_id") @db.Uuid
+  department   Department?   @relation(fields: [departmentId], references: [id])
+  userId       String?       @map("user_id") @db.Uuid
+  user         User?         @relation(fields: [userId], references: [id])
+  status       String        @default("compliant") @db.VarChar(20)
+  score        Decimal?      @db.Decimal(5, 2)
+  checkedAt    DateTime      @default(now()) @map("checked_at") @db.Timestamptz()
+  checkedById  String?       @map("checked_by_id") @db.Uuid
+  checkedBy    User?         @relation("ComplianceChecker", fields: [checkedById], references: [id])
+  notes        String?       @db.Text
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  @@index([sopId])
+  @@index([departmentId])
+  @@index([userId])
+  @@map("sop_compliance")
+}
+
+model SopApproval {
+  id            String              @id @default(uuid()) @db.Uuid
+  sopId         String              @map("sop_id") @db.Uuid
+  sop           Sop                 @relation(fields: [sopId], references: [id])
+  versionId     String?             @map("version_id") @db.Uuid
+  version       SopVersion?         @relation(fields: [versionId], references: [id])
+  stepKey       String?             @map("step_key") @db.VarChar(100)
+  requestedById String?             @map("requested_by_id") @db.Uuid
+  requestedBy   User?               @relation("ApprovalRequester", fields: [requestedById], references: [id])
+  approvedById  String?             @map("approved_by_id") @db.Uuid
+  approvedBy    User?               @relation("ApprovalDecider", fields: [approvedById], references: [id])
+  status        SopApprovalDecision @default(pending)
+  comments      String?             @db.Text
+  requestedAt   DateTime            @default(now()) @map("requested_at") @db.Timestamptz()
+  decidedAt     DateTime?           @map("decided_at") @db.Timestamptz()
+  createdAt     DateTime            @default(now()) @map("created_at")
+
+  @@index([sopId, status])
+  @@map("sop_approvals")
+}
+
+model SopTraining {
+  id          String   @id @default(uuid()) @db.Uuid
+  sopId       String   @map("sop_id") @db.Uuid
+  sop         Sop      @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  name        String   @db.VarChar(255)
+  type        String   @db.VarChar(50)
+  content     String?  @db.Text
+  videoUrl    String?  @map("video_url") @db.Text
+  duration    Int?     @map("duration")
+  quizData    Json?    @map("quiz_data") @db.JsonB
+  createdById String?  @map("created_by_id") @db.Uuid
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([sopId])
+  @@map("sop_training")
+}
+
+model SopTemplate {
+  id           String      @id @default(uuid()) @db.Uuid
+  name         String      @db.VarChar(255)
+  description  String?     @db.Text
+  category     String?     @db.VarChar(100)
+  departmentId String?     @map("department_id") @db.Uuid
+  department   Department? @relation(fields: [departmentId], references: [id])
+  steps        Json?       @db.JsonB
+  content      Json?       @db.JsonB
+  version      String      @default("v1.0") @db.VarChar(10)
+  usageCount   Int         @default(0) @map("usage_count")
+  createdById  String?     @map("created_by_id") @db.Uuid
+  createdBy    User?       @relation(fields: [createdById], references: [id])
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  @@map("sop_templates")
+}
+
+model ProcessRecording {
+  id          String                 @id @default(uuid()) @db.Uuid
+  name        String                 @db.VarChar(255)
+  description String?                @db.Text
+  status      ProcessRecordingStatus @default(recording)
+  steps       Json?                  @db.JsonB
+  duration    Int?                   @map("duration")
+  userId      String?                @map("user_id") @db.Uuid
+  user        User?                  @relation(fields: [userId], references: [id])
+  sopId       String?                @map("sop_id") @db.Uuid
+  sop         Sop?                   @relation(fields: [sopId], references: [id])
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
+  screenshots ProcessScreenshot[]
+
+  @@map("process_recordings")
+}
+
+model ProcessScreenshot {
+  id          String           @id @default(uuid()) @db.Uuid
+  recordingId String           @map("recording_id") @db.Uuid
+  recording   ProcessRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  imageUrl    String           @map("image_url") @db.Text
+  annotation  String?          @db.Text
+  stepIndex   Int?             @map("step_index")
+  orderIndex  Int              @default(0) @map("order_index")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@index([recordingId])
+  @@map("process_screenshots")
+}
+
+model ProcessChecklist {
+  id           String        @id @default(uuid()) @db.Uuid
+  sopId        String?       @map("sop_id") @db.Uuid
+  sop          Sop?          @relation(fields: [sopId], references: [id])
+  executionId  String?       @map("execution_id") @db.Uuid
+  execution    SopExecution? @relation(fields: [executionId], references: [id])
+  name         String        @db.VarChar(255)
+  items        Json?         @db.JsonB
+  assignedToId String?       @map("assigned_to_id") @db.Uuid
+  assignedTo   User?         @relation(fields: [assignedToId], references: [id])
+  completedAt  DateTime?     @map("completed_at") @db.Timestamptz()
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  @@map("process_checklists")
+}
+
+enum CommunicationChannel {
+  email
+  sms
+  whatsapp
+  call
+  internal_note
+}
+
+enum CommunicationDirection {
+  inbound
+  outbound
+}
+
+model CommunicationLog {
+  id           String                 @id @default(uuid()) @db.Uuid
+  leadId       String?                @map("lead_id") @db.Uuid
+  lead         Lead?                  @relation(fields: [leadId], references: [id])
+  clientId     String?                @map("client_id") @db.Uuid
+  client       Client?                @relation(fields: [clientId], references: [id])
+  channel      CommunicationChannel
+  direction    CommunicationDirection @default(outbound)
+  subject      String?                @db.VarChar(255)
+  body         String?                @db.Text
+  fromAddress  String?                @map("from_address") @db.VarChar(255)
+  toAddress    String?                @map("to_address") @db.VarChar(255)
+  ccAddresses  String[]               @map("cc_addresses") @db.Text
+  bccAddresses String[]               @map("bcc_addresses") @db.Text
+  attachments  Json?                  @db.JsonB
+  status       String                 @default("sent") @db.VarChar(20)
+  externalId   String?                @map("external_id") @db.VarChar(255)
+  metadata     Json?                  @db.JsonB
+  createdById  String?                @map("created_by_id") @db.Uuid
+  createdBy    User?                  @relation(fields: [createdById], references: [id])
+  createdAt    DateTime               @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@index([clientId])
+  @@index([createdAt])
+  @@map("communication_logs")
+}
+
+model CalendarEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String    @db.VarChar(255)
+  description String?   @db.Text
+  eventType   String?   @map("event_type") @db.VarChar(50)
+  startTime   DateTime  @map("start_time") @db.Timestamptz()
+  endTime     DateTime? @map("end_time") @db.Timestamptz()
+  allDay      Boolean   @default(false) @map("all_day")
+  location    String?   @db.VarChar(255)
+  meetingUrl  String?   @map("meeting_url") @db.Text
+  leadId      String?   @map("lead_id") @db.Uuid
+  lead        Lead?     @relation(fields: [leadId], references: [id])
+  clientId    String?   @map("client_id") @db.Uuid
+  client      Client?   @relation(fields: [clientId], references: [id])
+  projectId   String?   @map("project_id") @db.Uuid
+  project     Project?  @relation(fields: [projectId], references: [id])
+  ownerId     String?   @map("owner_id") @db.Uuid
+  owner       User?     @relation(fields: [ownerId], references: [id])
+  color       String?   @db.VarChar(7)
+  isCompleted Boolean   @default(false) @map("is_completed")
+  recurrence  Json?     @db.JsonB
+  reminders   Json?     @db.JsonB
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([startTime])
+  @@index([ownerId])
+  @@index([leadId])
+  @@index([clientId])
+  @@map("calendar_events")
+}
+
+model DashboardWidget {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  widgetType   String   @map("widget_type") @db.VarChar(50)
+  title        String   @db.VarChar(255)
+  config       Json?    @db.JsonB
+  gridPosition Json?    @map("grid_position") @db.JsonB
+  isVisible    Boolean  @default(true) @map("is_visible")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, widgetType])
+  @@map("dashboard_widgets")
+}
+
+model ClientPortalAccess {
+  id           String    @id @default(uuid()) @db.Uuid
+  clientId     String    @map("client_id") @db.Uuid
+  client       Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  token        String    @unique @db.VarChar(255)
+  email        String    @db.VarChar(255)
+  lastAccessAt DateTime? @map("last_access_at") @db.Timestamptz()
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([clientId])
+  @@index([token])
+  @@map("client_portal_access")
+}
+
+model ProcessImprovement {
+  id            String   @id @default(uuid()) @db.Uuid
+  sopId         String   @map("sop_id") @db.Uuid
+  sop           Sop      @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  title         String   @db.VarChar(255)
+  description   String?  @db.Text
+  suggestedById String?  @map("suggested_by_id") @db.Uuid
+  suggestedBy   User?    @relation(fields: [suggestedById], references: [id])
+  status        String   @default("suggested") @db.VarChar(20)
+  analysis      Json?    @db.JsonB
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([sopId])
+  @@map("process_improvements")
+}

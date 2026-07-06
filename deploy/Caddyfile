@@ -1,0 +1,28 @@
+{$DOMAIN} {
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Frontend
+    handle {
+        reverse_proxy frontend:3000
+    }
+
+    # API proxy (keep prefix — NestJS routes include /api/v1)
+    handle /api/* {
+        reverse_proxy backend:4000
+    }
+
+    # Uploads static files
+    handle /uploads/* {
+        reverse_proxy backend:4000
+    }
+
+    log {
+        output file /data/logs/access.log
+    }
+}
