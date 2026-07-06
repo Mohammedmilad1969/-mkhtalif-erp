@@ -90,12 +90,13 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://${DOMAIN}/api/v1
+        NEXT_PUBLIC_WS_URL: ws://${DOMAIN}
     container_name: mkhtalif-web
     restart: always
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: http://${DOMAIN}/api/v1
-      NEXT_PUBLIC_WS_URL: ws://${DOMAIN}
     ports:
       - '127.0.0.1:3000:3000'
     depends_on:
