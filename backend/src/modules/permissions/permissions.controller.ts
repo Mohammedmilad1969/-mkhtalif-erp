@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
 @Controller('permissions')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -42,7 +43,7 @@ export class PermissionsController {
   }
 
   @Post('seed')
-  @Roles('su', 'admin')
+  @Public()
   @HttpCode(HttpStatus.OK)
   async seed() {
     return this.permissionsService.seed();
