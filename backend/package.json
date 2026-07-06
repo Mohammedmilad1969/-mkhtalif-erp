@@ -21,7 +21,7 @@
     "prisma:studio": "prisma studio"
   },
   "prisma": {
-    "seed": "node --loader ts-node/esm prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
@@ -71,6 +71,7 @@
     "ts-jest": "^29.1.0",
     "ts-loader": "^9.5.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.7.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3"
   },
