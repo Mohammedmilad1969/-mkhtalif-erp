@@ -8,6 +8,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -44,6 +45,21 @@ interface KanbanBoardProps {
   onItemClick?: (id: string) => void;
   onItemMove?: (itemId: string, newColumnId: string) => void;
   onSelectStage?: (stageId: string) => void;
+}
+
+function ColumnDropzone({ columnId, hasItems }: { columnId: string; hasItems: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `column-${columnId}` });
+  if (hasItems) return null;
+  return (
+    <div
+      ref={setNodeRef}
+      className={`h-14 rounded-lg border-2 border-dashed flex items-center justify-center transition-colors ${
+        isOver ? 'border-primary bg-primary/10' : 'border-muted-foreground/20'
+      }`}
+    >
+      <p className="text-xs text-muted-foreground">Drop here</p>
+    </div>
+  );
 }
 
 export default function KanbanBoard({ columns, selectedIds, onToggleSelect, onItemClick, onItemMove, onSelectStage }: KanbanBoardProps) {
@@ -102,6 +118,8 @@ export default function KanbanBoard({ columns, selectedIds, onToggleSelect, onIt
     const isColumnId = columns.some((c) => c.id === overId);
     if (isColumnId) {
       toCol = overId;
+    } else if (typeof overId === 'string' && overId.startsWith('column-')) {
+      toCol = overId.replace('column-', '');
     } else {
       const overContainer = over.data.current?.sortable?.containerId;
       if (overContainer) toCol = overContainer as string;
@@ -167,11 +185,7 @@ export default function KanbanBoard({ columns, selectedIds, onToggleSelect, onIt
                       onClick={onItemClick}
                     />
                   ))}
-                  {column.items.length === 0 && (
-                    <div className="h-14 rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
-                      <p className="text-xs text-muted-foreground">Drop here</p>
-                    </div>
-                  )}
+                  <ColumnDropzone columnId={column.id} hasItems={column.items.length > 0} />
                 </div>
               </SortableContext>
             </div>

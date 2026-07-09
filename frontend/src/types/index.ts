@@ -598,7 +598,7 @@ export interface KnowledgeArticle {
   id: string;
   title: string;
   content?: string;
-  articleType: 'checklist' | 'template' | 'guide' | 'faq' | 'case_study';
+  articleType: 'sop' | 'checklist' | 'template' | 'guide' | 'faq' | 'case_study' | 'script' | 'filter_question';
   departmentId?: string;
   tags: string[];
   status: 'draft' | 'published' | 'archived';

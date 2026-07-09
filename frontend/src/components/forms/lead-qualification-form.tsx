@@ -97,7 +97,7 @@ export default function LeadQualificationForm({ leadId, onSuccess, persistedScor
   const computed = useMemo(() => computeScores(values), [values]);
   const hasFormData = Object.values(values).some((v) => v && v !== '');
 
-  const hasPersistedScore = persistedScore != null && persistedScore > 0;
+  const hasPersistedScore = persistedScore != null;
   const scores = useMemo(() => {
     if (hasPersistedScore) {
       return {
@@ -111,10 +111,10 @@ export default function LeadQualificationForm({ leadId, onSuccess, persistedScor
     return computed;
   }, [hasPersistedScore, persistedScore, persistedSubScores, computed]);
 
-  let classification: 'hot' | 'warm' | 'cold';
+  let classification: 'hot' | 'warm' | 'cold' | null = null;
   if (scores.totalScore >= 8) classification = 'hot';
   else if (scores.totalScore >= 5) classification = 'warm';
-  else classification = 'cold';
+  else if (scores.totalScore > 0) classification = 'cold';
 
   const showScores = hasFormData || hasPersistedScore;
 
@@ -141,7 +141,7 @@ export default function LeadQualificationForm({ leadId, onSuccess, persistedScor
               <div className="flex items-center gap-2">
                 <span className="text-3xl font-bold">{scores.totalScore}</span>
                 <span className="text-muted-foreground">/10</span>
-                <Badge variant={classification === 'hot' ? 'destructive' : classification === 'warm' ? 'default' : 'secondary'} className="capitalize ml-2">
+                <Badge variant={classification === 'hot' ? 'destructive' : classification === 'warm' ? 'default' : classification === 'cold' ? 'secondary' : 'outline'} className="capitalize ml-2">
                   <Thermometer className="h-3 w-3 mr-1" />
                   {classification}
                 </Badge>
@@ -163,16 +163,18 @@ export default function LeadQualificationForm({ leadId, onSuccess, persistedScor
               ))}
             </div>
           </div>
-
-          <div className="p-3 rounded-lg border bg-primary/5 flex items-start gap-3">
-            <Lightbulb className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold">{t('crm.suggestedNextAction')}</p>
-              <p className="text-sm text-muted-foreground">{computed.decision}</p>
-            </div>
-          </div>
         </>
       )}
+
+      <div className="p-3 rounded-lg border bg-primary/5 flex items-start gap-3">
+        <Lightbulb className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold">{t('crm.suggestedNextAction')}</p>
+          <p className="text-sm text-muted-foreground">
+            {hasFormData || hasPersistedScore ? computed.decision : 'Fill in the fields above to see the suggested next action'}
+          </p>
+        </div>
+      </div>
 
       <div className="space-y-2">
         <Label>{t('crm.serviceRequested')}</Label>

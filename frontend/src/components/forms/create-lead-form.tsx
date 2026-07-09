@@ -73,13 +73,13 @@ const LOST_REASONS = [
 ];
 
 const leadSchema = z.object({
-  clientName: z.string().min(1, 'Client name is required'),
+  clientName: z.string().optional(),
   company: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().optional(),
   source: z.string().optional(),
-  serviceType: z.string().optional(),
-  requestType: z.string().optional(),
+  serviceType: z.string().min(1, 'Service type is required'),
+  requestType: z.string().min(1, 'Request type is required'),
   seriousnessLevel: z.string().optional(),
   budgetLevel: z.string().optional(),
   opportunitySize: z.string().optional(),
@@ -148,17 +148,17 @@ export default function CreateLeadForm({ onSuccess }: CreateLeadFormProps) {
   const onSubmit = async (data: LeadFormData) => {
     try {
       const payload: any = {
-        clientName: data.clientName,
-        company: data.company,
-        phone: data.phone,
-        email: data.email,
-        source: data.source,
+        clientName: data.clientName || undefined,
+        company: data.company || undefined,
+        phone: data.phone || undefined,
+        email: data.email || undefined,
+        source: data.source || undefined,
         serviceType: data.serviceType,
         requestType: data.requestType,
-        clarityLevel: data.seriousnessLevel,
-        budgetLevel: data.budgetLevel,
-        opportunitySize: data.opportunitySize,
-        assignedTo: data.assignedTo,
+        clarityLevel: data.seriousnessLevel || undefined,
+        budgetLevel: data.budgetLevel || undefined,
+        opportunitySize: data.opportunitySize || undefined,
+        assignedTo: data.assignedTo || undefined,
       };
       await createLead.mutateAsync(payload as any);
       onSuccess?.();
@@ -186,9 +186,8 @@ export default function CreateLeadForm({ onSuccess }: CreateLeadFormProps) {
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <Label className="text-xs">{t('crm.clientName')} *</Label>
+          <Label className="text-xs">{t('crm.clientName')}</Label>
           <Input className="h-8 text-xs" id="clientName" {...register('clientName')} placeholder={t('crm.clientName')} />
-          {errors.clientName && <p className="text-xs text-destructive">{errors.clientName.message}</p>}
         </div>
         <div className="space-y-1">
           <Label className="text-xs">{t('crm.company')}</Label>
@@ -226,8 +225,8 @@ export default function CreateLeadForm({ onSuccess }: CreateLeadFormProps) {
           </Select>
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Service Type</Label>
-          <Select onValueChange={(v) => setValue('serviceType', v)}>
+          <Label className="text-xs">Service Type *</Label>
+          <Select onValueChange={(v) => { setValue('serviceType', v, { shouldValidate: true }); }}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Select service type" />
             </SelectTrigger>
@@ -237,6 +236,7 @@ export default function CreateLeadForm({ onSuccess }: CreateLeadFormProps) {
               ))}
             </SelectContent>
           </Select>
+          {errors.serviceType && <p className="text-xs text-destructive">{errors.serviceType.message}</p>}
         </div>
       </div>
 
@@ -260,9 +260,9 @@ export default function CreateLeadForm({ onSuccess }: CreateLeadFormProps) {
         <h3 className="font-semibold text-xs">Lead Scoring</h3>
         <div className="grid grid-cols-2 gap-1.5">
           <div>
-            <Select onValueChange={(v) => setValue('requestType', v)}>
+            <Select onValueChange={(v) => { setValue('requestType', v, { shouldValidate: true }); }}>
               <SelectTrigger className="h-7 text-xs">
-                <SelectValue placeholder="1. Request Type" />
+                <SelectValue placeholder="1. Request Type *" />
               </SelectTrigger>
               <SelectContent>
                 {REQUEST_TYPES.map((rt) => (
@@ -270,6 +270,7 @@ export default function CreateLeadForm({ onSuccess }: CreateLeadFormProps) {
                 ))}
               </SelectContent>
             </Select>
+            {errors.requestType && <p className="text-xs text-destructive">{errors.requestType.message}</p>}
           </div>
           <div>
             <Select onValueChange={(v) => setValue('seriousnessLevel', v)}>

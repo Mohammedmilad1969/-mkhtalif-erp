@@ -1,14 +1,13 @@
 import {
   IsString,
-  IsNotEmpty,
   IsOptional,
   IsEmail,
 } from 'class-validator';
 
 export class CreateLeadDto {
   @IsString()
-  @IsNotEmpty()
-  clientName: string;
+  @IsOptional()
+  clientName?: string;
 
   @IsString()
   @IsOptional()

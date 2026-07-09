@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { useKnowledgeArticles } from '@/hooks/useApi';
 import { KnowledgeArticle } from '@/types';
-import { Plus, Search, BookOpen, FileText, ListChecks, FileCheck, HelpCircle, GraduationCap } from 'lucide-react';
+import { Plus, Search, BookOpen, FileText, ListChecks, FileCheck, HelpCircle, GraduationCap, ScrollText, Filter } from 'lucide-react';
 
 const typeVariants: Record<string, 'default' | 'secondary' | 'outline' | 'info' | 'success'> = {
   sop: 'default',
@@ -26,6 +26,8 @@ const typeVariants: Record<string, 'default' | 'secondary' | 'outline' | 'info' 
   guide: 'success',
   faq: 'outline',
   case_study: 'default',
+  script: 'info',
+  filter_question: 'secondary',
 };
 
 const typeIcons: Record<string, React.ElementType> = {
@@ -35,6 +37,8 @@ const typeIcons: Record<string, React.ElementType> = {
   guide: FileCheck,
   faq: HelpCircle,
   case_study: GraduationCap,
+  script: ScrollText,
+  filter_question: Filter,
 };
 
 const typeLabels: Record<string, string> = {
@@ -44,9 +48,11 @@ const typeLabels: Record<string, string> = {
   guide: 'Guide',
   faq: 'FAQ',
   case_study: 'Case Study',
+  script: 'Script',
+  filter_question: 'Filter Question',
 };
 
-const types = ['sop', 'checklist', 'template', 'guide', 'faq', 'case_study'];
+const types = ['sop', 'checklist', 'template', 'guide', 'faq', 'case_study', 'script', 'filter_question'];
 
 export default function KnowledgePage() {
   const router = useRouter();

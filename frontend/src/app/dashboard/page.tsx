@@ -453,17 +453,20 @@ export default function DashboardPage() {
           const isFullWidth = widget.widgetType === 'stats_row' || widget.widgetType === 'quick_actions';
 
           if (isChartRow) {
-            const partnerType = widget.widgetType === 'revenue_chart' ? 'pipeline_chart' : 'revenue_chart';
-            const partnerWidget = activeWidgets.find((w) => w.widgetType === partnerType);
-            if (partnerWidget) {
+            const chartWidgets = activeWidgets.filter((w) =>
+              w.widgetType === 'revenue_chart' || w.widgetType === 'pipeline_chart');
+            const chartIndex = chartWidgets.findIndex((w) => w.widgetType === widget.widgetType);
+            if (chartIndex === 0) {
               return (
                 <div key={`chart-row`} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {widgetRenderers.revenue_chart()}
-                  {widgetRenderers.pipeline_chart()}
+                  {chartWidgets.map((w) => {
+                    const r = widgetRenderers[w.widgetType];
+                    return r ? r() : null;
+                  })}
                 </div>
               );
             }
-            return <div key={widget.widgetType} className="grid grid-cols-1 lg:grid-cols-3 gap-6">{renderer()}</div>;
+            return null;
           }
 
           if (isFullWidth) {

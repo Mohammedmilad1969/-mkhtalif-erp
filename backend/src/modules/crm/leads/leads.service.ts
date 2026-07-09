@@ -57,7 +57,7 @@ export class LeadsService {
     }
 
     const leadData: any = {
-      clientName: dto.clientName,
+      clientName: dto.clientName || 'Unnamed Lead',
       source: dto.source || 'other',
       leadScore: totalScore > 0 ? totalScore : null,
       leadTemperature: totalScore > 0 ? (temperature as any) : null,

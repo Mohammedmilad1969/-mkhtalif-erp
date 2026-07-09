@@ -16,6 +16,8 @@ const typeVariants: Record<string, 'default' | 'secondary' | 'outline' | 'info' 
   guide: 'success',
   faq: 'outline',
   case_study: 'default',
+  script: 'info',
+  filter_question: 'secondary',
 };
 
 const typeLabels: Record<string, string> = {
@@ -25,6 +27,8 @@ const typeLabels: Record<string, string> = {
   guide: 'Guide',
   faq: 'FAQ',
   case_study: 'Case Study',
+  script: 'Script',
+  filter_question: 'Filter Question',
 };
 
 export default function KnowledgeArticleDetailPage() {
@@ -94,9 +98,41 @@ export default function KnowledgeArticleDetailPage() {
 
       <Card>
         <CardContent className="p-6">
-          <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
-            {article.content || 'No content available'}
-          </div>
+          {article.articleType === 'script' ? (
+            (() => {
+              let rows: { text: string; customerType: string }[] = [];
+              try {
+                rows = JSON.parse(article.content || '[]');
+              } catch { /* ignore */ }
+              if (!Array.isArray(rows)) rows = [];
+              return rows.length === 0 ? (
+                <p className="text-muted-foreground">No script content available</p>
+              ) : (
+                <div className="rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium w-1/2">Script Text</th>
+                        <th className="text-left p-3 font-medium w-1/2">Customer Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, i) => (
+                        <tr key={i} className="border-b last:border-0">
+                          <td className="p-3 whitespace-pre-wrap">{row.text}</td>
+                          <td className="p-3">{row.customerType}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
+              {article.content || 'No content available'}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -34,6 +34,7 @@ export default function SortableCard({ item, selected, onToggleSelect, onClick }
     transition,
     opacity: isDragging ? 0.5 : 1,
     cursor: 'grab',
+    touchAction: 'none',
   };
 
   return (
